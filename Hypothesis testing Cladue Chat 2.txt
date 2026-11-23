@@ -1,0 +1,73 @@
+
+> <ide_opened_file>The user opened the file
+  c:\Users\apkar\OneDrive\Documents\Projects\AIBD\AIBD-Project\Hypothesis
+  testing.ipynb in the IDE. This may or may not be related to the current
+  task.</ide_opened_file>
+
+> okay check if the data is normalized
+
+  Searched for 2 patterns, ran 3 shell commands (ctrl+o to expand)
+
+● No, the data isn't normalized. I checked Final_Dataset_AIBD.csv, which has 185
+  samples and about 17.7k gene expression columns, plus Age, Gender and ICU.
+
+  - Scale differs widely between genes. Per-gene means range from 0 to about
+    93,000, with a median of about 2.4. Per-gene standard deviations range from
+    0 to about 62,000.
+  - Values are on a raw scale. The overall range is about −640 to 326,585, so
+    this isn't log-transformed or z-scored data.
+  - Some values are negative. Expression counts shouldn't be below zero, so
+    these look like an artifact of the upstream processing. For example, BICDL1
+    has a minimum of −0.52 and LYST has −0.27.
+  - Scaling only happens inside the PCA step. EDA.ipynb applies StandardScaler
+    to the PCA input only (lines 1796–1873). The saved dataset is untouched. I
+    didn't see any scaling in Model Training.ipynb, but I didn't read it
+    closely.
+
+  What to do next:
+  - For tests that compare groups, log-transform first, for example log2(x + 1)
+    after clipping negatives.
+  - For distance-based or linear models such as PCA, SVM, KNN and logistic
+    regression, apply StandardScaler after the transform. Fit it on the training
+    split only, to avoid leakage.
+  - Tree-based models don't need scaling.
+
+  I can add the normalization step to the notebook if you'd like.
+
+> okay first normalize the data.
+  then do both the tests again and overwrite the mean and median elevation
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Print-line replacement didn't match (quote/escape mismatch); fixing directly.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I normalized the data, re-ran both tests, and overwrote
+  mean_significant_genes.json and median_significant_genes.json.
+
+  Normalization: I added a cell to Hypothesis testing.ipynb
+  (Hypothesis%20testing.ipynb). It clips negative values to 0, then applies
+  log2(x + 1). The saved CSV isn't changed.
+
+  Tests: Both tests (Welch's t-test for the means, Mann-Whitney U for the
+  medians) now run on the normalized values, with the same BH-FDR < 0.05.
+
+  ┌────────┬──────────────────────┬────────────────────────┐
+  │  Test  │ Elevated (old → new) │ Suppressed (old → new) │
+  ├────────┼──────────────────────┼────────────────────────┤
+  │ Mean   │ 9894 → 9752          │ 1725 → 1824            │
+  ├────────┼──────────────────────┼────────────────────────┤
+  │ Median │ 9237 → 9005          │ 3639 → 3715            │
+  └────────┴──────────────────────┴────────────────────────┘
+
+  For the mean test, 9659 of the new elevated genes were also elevated before.
+  For the median test, all 9005 new elevated genes were elevated before.
+
+  Fold change: I replaced the pct_change column with log2_fc, the difference
+  between the case and control means (or medians) on the log scale. A percent
+  change computed on log values isn't meaningful. If you want pct_change back,
+  tell me.
+
+  I didn't re-run anything in Model Training.ipynb. It still uses the raw data
+  unless you point it at the normalized values.

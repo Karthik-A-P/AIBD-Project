@@ -1,0 +1,247 @@
+
+> <ide_opened_file>The user opened the file
+  c:\Users\apkar\OneDrive\Documents\Projects\AIBD\AIBD-Project\Hypothesis
+  testing.ipynb in the IDE. This may or may not be related to the current
+  task.</ide_opened_file>
+
+> okay so for this notebook, write a code for doing benjamin houchberg test for
+  all the genes with 95% level of significance to find the statistically
+  significant percentage of  elevation/ supression in mean gene expression. And
+  print the number of those significant genes
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Edit Notebook(Hypothesis testing.ipynb@9e655c83)
+  ⎿  Updated cell 9e655c83:
+         1 from scipy import stats
+         2 from statsmodels.stats.multitest import multipletests
+         3
+         4 ALPHA = 0.05  # 95% significance level (FDR)
+         5
+         6 # Gene columns start after the metadata columns (..., Age, Gen
+           der, ICU)
+         7 gene_cols = list(data.columns[data.columns.get_loc('ICU') + 1:
+           ])
+         8 expr = data[gene_cols].apply(pd.to_numeric, errors='coerce')
+         9
+        10 # Group labels: 'C...' = case (C), 'N...' = control (N)
+        11 grp = data['Unnamed: 0'].astype(str).str[0]
+        12 case, ctrl = expr[grp == 'C'], expr[grp == 'N']
+        13
+        14 # Welch's t-test for every gene (two-sided)
+        15 t_stat, p_val = stats.ttest_ind(case, ctrl, equal_var=False, n
+           an_policy='omit')
+        16
+        17 res = pd.DataFrame({
+        18     'gene': gene_cols,
+        19     'mean_case': case.mean().values,
+        20     'mean_ctrl': ctrl.mean().values,
+        21     't_stat': t_stat,
+        22     'p_value': p_val,
+        23 })
+        24 res['pct_change'] = (res['mean_case'] - res['mean_ctrl']) / re
+           s['mean_ctrl'].replace(0, np.nan) * 100
+        25
+        26 # Benjamini-Hochberg FDR correction (genes with NaN p-values,
+           e.g. constant genes, are excluded)
+        27 valid = res['p_value'].notna()
+        28 res['p_adj'] = np.nan
+        29 res.loc[valid, 'p_adj'] = multipletests(res.loc[valid, 'p_valu
+           e'], alpha=ALPHA, method='fdr_bh')[1]
+        30 res['significant'] = res['p_adj'] < ALPHA
+        31 res['direction'] = np.where(~res['significant'], 'ns',
+        32                             np.where(res['mean_case'] > res['m
+           ean_ctrl'], 'elevated', 'suppressed'))
+        33
+        34 n_tested = valid.sum()
+        35 n_sig = res['significant'].sum()
+        36 n_up = (res['direction'] == 'elevated').sum()
+        37 n_down = (res['direction'] == 'suppressed').sum()
+        38
+        39 print(f"Genes tested: {n_tested}")
+        40 print(f"Significant genes (BH-FDR < {ALPHA}): {n_sig} ({n_sig
+           / n_tested * 100:.2f}%)")
+        41 print(f"  Elevated   : {n_up} ({n_up / n_tested * 100:.2f}%)")
+        42 print(f"  Suppressed : {n_down} ({n_down / n_tested * 100:.2f}
+           %)")
+        43
+        44 sig = res[res['significant']]
+        45 print("\nMedian % change in mean expression among significant
+           genes:")
+        46 print(sig.groupby('direction')['pct_change'].median())
+        47 sig.sort_values('p_adj').head(10)
+
+● I added the Benjamini–Hochberg code to the last (empty) cell of Hypothesis
+  testing.ipynb (Hypothesis%20testing.ipynb). I haven't run it, so there are no
+  results yet.
+
+  What it does
+  - Gene columns: It takes every column after ICU as a gene, which is about
+    17,700 columns.
+  - Groups: It splits samples by the first letter of the ID in Unnamed: 0: C
+    (100 samples) and N (85 samples).
+  - Test: It runs a two-sided Welch's t-test on each gene.
+  - Correction: It applies the Benjamini–Hochberg correction at α = 0.05, which
+    is the 95% level. A gene counts as significant if its adjusted p-value is
+    below 0.05.
+  - Direction and size: For each gene, the percent change in mean expression is
+    (mean C − mean N) / mean N × 100. Significant genes are labelled elevated or
+    suppressed by whether the C mean is above or below the N mean.
+  - Output: It prints the number and percentage of significant genes, split into
+    elevated and suppressed. It also prints the median percent change for each
+    direction and shows the top 10 genes by adjusted p-value.
+
+  Assumptions to check
+  - Group direction: I treated C as the case group and N as the control, so
+    "elevated" means higher in C than in N. Swap the two if you meant the
+    reverse.
+  - Percent change scale: The values look like raw or normalised expression, not
+    log values, so I computed percent change directly on the means. If the data
+    are log-scaled, tell me and I'll change it.
+  - Skipped genes: A gene with no variance in either group gets no p-value, so
+    it is left out of the correction and the "genes tested" count.
+
+  You'll also need statsmodels installed. If it isn't, run pip install
+  statsmodels.
+
+> <ide_opened_file>The user opened the file
+  c:\Users\apkar\OneDrive\Documents\Projects\AIBD\AIBD-Project\Hypothesis
+  testing.ipynb in the IDE. This may or may not be related to the current
+  task.</ide_opened_file>
+
+> now do it for mean also
+  ⎿  Interrupted · What should Claude do instead?
+
+> now do it for meadian using mann whiteny U test with same level of
+  significance and tell print the number of significnt genes
+
+● Edit Notebook(Hypothesis testing.ipynb@9e655c83)
+  ⎿  Updated cell 089960c6:
+         1 # ---- Median comparison: Mann-Whitney U test + Benjamini-Hoch
+           berg (FDR 5%) ----
+         2 # Re-uses `case`, `ctrl`, `gene_cols`, `ALPHA` from the previo
+           us cell
+         3 u_stat, p_mw = stats.mannwhitneyu(case, ctrl, alternative='two
+           -sided', nan_policy='omit')
+         4
+         5 res_med = pd.DataFrame({
+         6     'gene': gene_cols,
+         7     'median_case': case.median().values,
+         8     'median_ctrl': ctrl.median().values,
+         9     'U_stat': u_stat,
+        10     'p_value': p_mw,
+        11 })
+        12 res_med['pct_change'] = ((res_med['median_case'] - res_med['me
+           dian_ctrl'])
+        13                          / res_med['median_ctrl'].replace(0, n
+           p.nan) * 100)
+        14
+        15 valid_m = res_med['p_value'].notna()
+        16 res_med['p_adj'] = np.nan
+        17 res_med.loc[valid_m, 'p_adj'] = multipletests(res_med.loc[vali
+           d_m, 'p_value'],
+        18                                               alpha=ALPHA, met
+           hod='fdr_bh')[1]
+        19 res_med['significant'] = res_med['p_adj'] < ALPHA
+        20 res_med['direction'] = np.where(~res_med['significant'], 'ns',
+        21                                 np.where(res_med['median_case'
+           ] > res_med['median_ctrl'],
+        22                                          'elevated', 'suppress
+           ed'))
+        23
+        24 n_tested_m = valid_m.sum()
+        25 n_sig_m = res_med['significant'].sum()
+        26 n_up_m = (res_med['direction'] == 'elevated').sum()
+        27 n_down_m = (res_med['direction'] == 'suppressed').sum()
+        28
+        29 print(f"Genes tested: {n_tested_m}")
+        30 print(f"Significant genes (Mann-Whitney U, BH-FDR < {ALPHA}):
+           {n_sig_m} ({n_sig_m / n_tested_m * 100:.2f}%)")
+        31 print(f"  Elevated   : {n_up_m} ({n_up_m / n_tested_m * 100:.2
+           f}%)")
+        32 print(f"  Suppressed : {n_down_m} ({n_down_m / n_tested_m * 10
+           0:.2f}%)")
+        33
+        34 sig_m = res_med[res_med['significant']]
+        35 print("\nMedian % change in median expression among significan
+           t genes:")
+        36 print(sig_m.groupby('direction')['pct_change'].median())
+        37 sig_m.sort_values('p_adj').head(10)
+
+● I added a new cell right after the mean-test cell in Hypothesis testing.ipynb
+  (Hypothesis%20testing.ipynb). I haven't run it, so it prints no gene counts
+  yet.
+
+  - Test: It runs a two-sided Mann–Whitney U test on every gene, comparing C
+    against N.
+  - Correction: It applies the Benjamini–Hochberg correction at α = 0.05, the
+    same level as the mean test. A gene counts as significant if its adjusted
+    p-value is below 0.05.
+  - Direction and size: The percent change is calculated on medians, as (median
+    C − median N) / median N × 100. Direction is elevated if the C median is
+    above the N median, otherwise suppressed.
+  - Output: It prints the number and percentage of significant genes, split into
+    elevated and suppressed. It also prints the median percent change for each
+    direction and shows the top 10 genes.
+  - Run order: Run the mean-test cell first, because this cell reuses case,
+    ctrl, gene_cols and ALPHA from it.
+  - Zero medians: Many genes have a median of 0 in one group, so their percent
+    change comes out as NaN. They can still be significant, and they are still
+    counted in the significant totals.
+
+  You also asked me to do the mean test as well, but you interrupted that and
+  moved on to the median. The mean version is already in the earlier cell
+  (Welch's t-test with the same correction). If you meant something different,
+  tell me.
+
+> export and save the names of the genes as a json file names
+  mean_significant_genes with keys as elevation and supression and similarly
+  for median also. Run the code
+
+● Edit Notebook(Hypothesis testing.ipynb@089960c6)
+  ⎿  Updated cell da1a7a26:
+         1 import json
+         2
+         3 def export_genes(df, path):
+         4     out = {
+         5         'elevation': df.loc[df['direction'] == 'elevated', '
+           gene'].tolist(),
+         6         'supression': df.loc[df['direction'] == 'suppressed'
+           , 'gene'].tolist(),
+         7     }
+         8     with open(path, 'w') as f:
+         9         json.dump(out, f, indent=2)
+        10     print(f"{path}: {len(out['elevation'])} elevation, {len(
+           out['supression'])} supression")
+        11
+        12 export_genes(res, 'mean_significant_genes.json')
+        13 export_genes(res_med, 'median_significant_genes.json')
+
+
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● I ran the notebook and saved both gene lists as JSON files in the project
+  folder. Each file has the keys elevation and supression, spelled as you wrote
+  it.
+
+  17,721 genes were tested, and I treated C as the case group and N as the
+  control. Significance uses Benjamini–Hochberg at α = 0.05.
+
+  ┌───────────────┬─────────────┬──────────┬────────────┬────────────────────┐
+  │     Test      │ Significant │ Elevated │ Suppressed │        File        │
+  ├───────────────┼─────────────┼──────────┼────────────┼────────────────────┤
+  │ Mean (Welch's │ 11,619      │ 9,894    │ 1,725      │ mean_significant_g │
+  │  t-test)      │ (65.57%)    │          │            │ enes.json          │
+  ├───────────────┼─────────────┼──────────┼────────────┼────────────────────┤
+  │ Median        │ 12,876      │          │            │ median_significant │
+  │ (Mann–Whitney │ (72.66%)    │ 9,237    │ 3,639      │ _genes.json        │
+  │  U)           │             │          │            │                    │
+  └───────────────┴─────────────┴──────────┴────────────┴────────────────────┘
+
+  - Suppressed percent change: The median test shows −100% as the median change
+    for suppressed genes. Many of those genes have a median of 0 in the C group,
+    so the percent change is only a rough guide there.
+  - Notebook changes: I added an export cell at the end of Hypothesis
+    testing.ipynb (Hypothesis%20testing.ipynb). Running it saved the outputs
+    into the notebook.
